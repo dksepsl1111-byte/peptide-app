@@ -3,164 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>펩타이드 트래커</title>
+    <title>펩타이드 매니저</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://unpkg.com/recharts/umd/Recharts.js"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .active-tab { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+    </style>
 </head>
-<body class="bg-slate-50">
-    <div id="root"></div>
+<body class="bg-slate-50 text-slate-900">
+    <div class="max-w-md mx-auto min-h-screen flex flex-col pb-20">
+        <header class="p-6 bg-white shadow-sm font-bold text-xl flex items-center gap-2">
+            💉 펩타이드 다이어리
+        </header>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-        const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } = Recharts;
-        const { Calendar, TrendingDown, Syringe, Package, Plus, Trash2, Clock } = lucide;
+        <main class="p-4 space-y-4">
+            <div id="alarm-section" class="flex gap-2 overflow-x-auto pb-2"></div>
 
-        const PEPTIDES = {
-            mounjaro: { id: 'mounjaro', name: '마운자로', color: '#3b82f6', defaultCycle: 7, doses: [2.5, 5, 7.5, 10, 12.5, 15], vialSizes: [50, 60, 80] },
-            tesamorelin: { id: 'tesamorelin', name: '테사모렐린', color: '#10b981', defaultCycle: 1, doses: [1, 2], vialSizes: [2, 5, 10] },
-            retatrutide: { id: 'retatrutide', name: '레타트루타이드', color: '#f59e0b', defaultCycle: 7, doses: [1, 2, 3, 4, 5, 6, 7, 8], vialSizes: [10, 30] }
-        };
-
-        function App() {
-            const [activeTab, setActiveTab] = useState('record');
-            const [injections, setInjections] = useState([]);
-            const [weights, setWeights] = useState([]);
-            const [inventory, setInventory] = useState([]);
-            
-            const [newInjection, setNewInjection] = useState({ date: new Date().toISOString().split('T')[0], peptide: 'mounjaro', dose: 2.5, vialId: '' });
-            const [newWeight, setNewWeight] = useState({ date: new Date().toISOString().split('T')[0], weight: '' });
-
-            useEffect(() => {
-                const saved = localStorage.getItem('peptide_data');
-                if (saved) {
-                    const data = JSON.parse(saved);
-                    setInjections(data.injections || []);
-                    setWeights(data.weights || []);
-                    setInventory(data.inventory || []);
-                }
-            }, []);
-
-            useEffect(() => {
-                localStorage.setItem('peptide_data', JSON.stringify({ injections, weights, inventory }));
-            }, [injections, weights, inventory]);
-
-            const getNextInjections = () => {
-                const next = {};
-                Object.keys(PEPTIDES).forEach(pid => {
-                    const inj = injections.filter(i => i.peptide === pid);
-                    if (inj.length === 0) return;
-                    const last = inj[inj.length - 1];
-                    const nextDate = new Date(last.date);
-                    nextDate.setDate(nextDate.getDate() + 7); // 기본 7일 주기
-                    const days = Math.ceil((nextDate - new Date()) / 86400000);
-                    next[pid] = { daysUntil: days, peptide: PEPTIDES[pid] };
-                });
-                return next;
-            };
-
-            const nextInjections = getNextInjections();
-
-            return (
-                <div className="max-w-md mx-auto min-h-screen flex flex-col pb-20">
-                    <header className="p-6 bg-white shadow-sm flex items-center gap-2">
-                        <Syringe className="text-blue-500" size={24} />
-                        <h1 className="text-xl font-bold italic">PEPTIDE TRACKER</h1>
-                    </header>
-
-                    <main className="p-4 space-y-4">
-                        {/* 알람 영역 */}
-                        {Object.keys(nextInjections).length > 0 && (
-                            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                                {Object.values(nextInjections).map(({daysUntil, peptide}) => (
-                                    <div key={peptide.id} className={`min-w-[120px] p-4 rounded-2xl shadow-sm border-b-4 ${daysUntil <= 0 ? 'bg-red-500 border-red-700 text-white' : 'bg-white border-blue-500'}`}>
-                                        <p className="text-[10px] font-bold opacity-70">{peptide.name}</p>
-                                        <h2 className="text-lg font-black">{daysUntil <= 0 ? 'D-DAY' : `D-${daysUntil}`}</h2>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {activeTab === 'record' && (
-                            <div className="space-y-4">
-                                <div className="bg-white p-5 rounded-3xl shadow-sm space-y-4">
-                                    <h3 className="font-bold text-gray-700 flex items-center gap-2"><Clock size={16}/> 기록하기</h3>
-                                    <input type="date" value={newInjection.date} onChange={e => setNewInjection({...newInjection, date: e.target.value})} className="w-full p-3 bg-slate-50 rounded-2xl border-none outline-blue-500" />
-                                    <select value={newInjection.peptide} onChange={e => setNewInjection({...newInjection, peptide: e.target.value, vialId: ''})} className="w-full p-3 bg-slate-50 rounded-2xl">
-                                        {Object.values(PEPTIDES).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                    </select>
-                                    <select value={newInjection.vialId} onChange={e => setNewInjection({...newInjection, vialId: e.target.value})} className="w-full p-3 bg-slate-50 rounded-2xl text-blue-600 font-bold">
-                                        <option value="">[필수] 주사기 선택 (재고)</option>
-                                        {inventory.filter(v => v.peptide === newInjection.peptide && v.remaining > 0).map(v => (
-                                            <option key={v.id} value={v.id}>{v.remaining.toFixed(1)}mg 남음</option>
-                                        ))}
-                                    </select>
-                                    <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                                        {PEPTIDES[newInjection.peptide].doses.map(d => (
-                                            <button key={d} onClick={() => setNewInjection({...newInjection, dose: d})} className={`px-4 py-2 rounded-xl whitespace-nowrap text-sm font-bold ${newInjection.dose === d ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400'}`}>{d}mg</button>
-                                        ))}
-                                    </div>
-                                    <button onClick={() => {
-                                        if(!newInjection.vialId) return alert('재고에서 주사기를 먼저 선택하세요!');
-                                        const vial = inventory.find(v => v.id === parseInt(newInjection.vialId));
-                                        setInjections([...injections, {...newInjection, id: Date.now()}]);
-                                        setInventory(inventory.map(v => v.id === vial.id ? {...v, remaining: v.remaining - newInjection.dose} : v));
-                                        alert('저장되었습니다!');
-                                    }} className="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg">기록 저장</button>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'inventory' && (
-                            <div className="space-y-4">
-                                <button onClick={() => {
-                                    const p = PEPTIDES[newInjection.peptide];
-                                    setInventory([...inventory, { id: Date.now(), peptide: p.id, totalSize: p.vialSizes[0], remaining: p.vialSizes[0] }]);
-                                    alert('새 주사기가 등록되었습니다!');
-                                }} className="w-full p-5 bg-white border-2 border-dashed border-slate-200 rounded-3xl text-slate-400 font-bold">+ {PEPTIDES[newInjection.peptide].name} 재고 추가</button>
-                                {inventory.map(v => (
-                                    <div key={v.id} className="bg-white p-5 rounded-3xl shadow-sm">
-                                        <div className="flex justify-between font-bold mb-2">
-                                            <span>{PEPTIDES[v.peptide].name}</span>
-                                            <button onClick={() => setInventory(inventory.filter(i => i.id !== v.id))} className="text-red-300"><Trash2 size={18}/></button>
-                                        </div>
-                                        <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                                            <div className="h-full" style={{width: `${(v.remaining/v.totalSize)*100}%`, backgroundColor: PEPTIDES[v.peptide].color}}></div>
-                                        </div>
-                                        <p className="text-right text-[10px] mt-1 text-slate-400 font-bold">{v.remaining.toFixed(1)} / {v.totalSize}mg</p>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                        
-                        {activeTab === 'weight' && (
-                            <div className="bg-white p-5 rounded-3xl shadow-sm text-center">
-                                <h2 className="text-3xl font-black text-blue-600">
-                                    {weights.length > 1 ? (weights[0].weight - weights[weights.length-1].weight).toFixed(1) : '0.0'}kg 감량
-                                </h2>
-                                <div className="flex gap-2 mt-4">
-                                    <input type="number" placeholder="현재 체중" value={newWeight.weight} onChange={e => setNewWeight({...newWeight, weight: e.target.value})} className="flex-1 p-3 bg-slate-50 rounded-2xl" />
-                                    <button onClick={() => { if(newWeight.weight) { setWeights([...weights, {...newWeight, id: Date.now()}]); setNewWeight({...newWeight, weight: ''}); alert('저장됨'); } }} className="bg-green-500 text-white px-6 rounded-2xl font-bold">저장</button>
-                                </div>
-                            </div>
-                        )}
-                    </main>
-
-                    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-3 max-w-md mx-auto rounded-t-3xl">
-                        <button onClick={() => setActiveTab('record')} className={`p-2 ${activeTab === 'record' ? 'text-blue-500' : 'text-slate-300'}`}><Calendar size={24}/></button>
-                        <button onClick={() => setActiveTab('inventory')} className={`p-2 ${activeTab === 'inventory' ? 'text-blue-500' : 'text-slate-300'}`}><Package size={24}/></button>
-                        <button onClick={() => setActiveTab('weight')} className={`p-2 ${activeTab === 'weight' ? 'text-blue-500' : 'text-slate-300'}`}><TrendingDown size={24}/></button>
-                    </nav>
+            <div id="record" class="tab-content active space-y-4">
+                <div class="bg-white p-5 rounded-3xl shadow-sm space-y-4">
+                    <h3 class="font-bold text-slate-700 underline">주사 기록 입력</h3>
+                    <input type="date" id="inj-date" class="w-full p-3 bg-slate-100 rounded-xl border-none">
+                    <select id="inj-type" class="w-full p-3 bg-slate-100 rounded-xl">
+                        <option value="mounjaro">마운자로 (7일 주기)</option>
+                        <option value="tesamorelin">테사모렐린 (1일 주기)</option>
+                        <option value="retatrutide">레타트루타이드 (7일 주기)</option>
+                    </select>
+                    <select id="inj-vial" class="w-full p-3 bg-blue-50 rounded-xl text-blue-600 font-bold">
+                        <option value="">먼저 재고를 등록하세요</option>
+                    </select>
+                    <input type="number" id="inj-dose" placeholder="용량(mg) 입력" class="w-full p-3 bg-slate-100 rounded-xl">
+                    <button onclick="saveInjection()" class="w-full bg-blue-600 text-white p-4 rounded-2xl font-bold shadow-lg">기록 저장</button>
                 </div>
-            );
+
+                <div class="bg-white p-5 rounded-3xl shadow-sm space-y-3">
+                    <h3 class="font-bold text-slate-700">체중 입력</h3>
+                    <div class="flex gap-2">
+                        <input type="number" id="weight-input" placeholder="00.0" class="flex-1 p-3 bg-slate-100 rounded-xl border-none font-bold">
+                        <button onclick="saveWeight()" class="bg-green-500 text-white px-6 rounded-xl font-bold">저장</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="inventory" class="tab-content space-y-4">
+                <div class="bg-white p-5 rounded-3xl shadow-sm">
+                    <h3 class="font-bold mb-4">새 주사기 등록</h3>
+                    <button onclick="addVial()" class="w-full p-4 border-2 border-dashed border-slate-300 rounded-2xl text-slate-400 font-bold">+ 주사기 추가 (선택된 종류)</button>
+                </div>
+                <div id="vial-list" class="space-y-3"></div>
+            </div>
+
+            <div id="weight" class="tab-content space-y-4">
+                <div class="bg-white p-8 rounded-[40px] shadow-sm text-center">
+                    <p class="text-slate-400 text-xs font-bold uppercase tracking-widest">총 감량 수치</p>
+                    <h2 id="total-loss" class="text-5xl font-black text-blue-600 mt-2">0.0kg</h2>
+                </div>
+                <div id="weight-list" class="bg-white p-4 rounded-2xl shadow-sm space-y-2 max-h-64 overflow-y-auto"></div>
+            </div>
+        </main>
+
+        <nav class="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-3 max-w-md mx-auto">
+            <button onclick="showTab('record')" class="nav-item p-2 font-bold text-blue-500">기록</button>
+            <button onclick="showTab('inventory')" class="nav-item p-2 font-bold text-slate-300">재고</button>
+            <button onclick="showTab('weight')" class="nav-item p-2 font-bold text-slate-300">통계</button>
+        </nav>
+    </div>
+
+    <script>
+        [cite_start]// 데이터 초기화 [cite: 10]
+        let data = JSON.parse(localStorage.getItem('peptide_data')) || { injections: [], weights: [], inventory: [] };
+        const cycles = { mounjaro: 7, tesamorelin: 1, retatrutide: 7 };
+
+        function updateUI() {
+            [cite_start]localStorage.setItem('peptide_data', JSON.stringify(data)); [cite: 11]
+            renderAlarms();
+            renderVialSelect();
+            renderVialList();
+            renderWeightInfo();
         }
 
-        // 앱 렌더링 명령 (이게 있어야 화면이 나옵니다!)
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(el => {
+                el.classList.remove('text-blue-500');
+                el.classList.add('text-slate-300');
+            });
+            event.currentTarget.classList.add('text-blue-500');
+        }
+
+        function renderAlarms() {
+            const alarmSection = document.getElementById('alarm-section');
+            alarmSection.innerHTML = '';
+            const types = ['mounjaro', 'tesamorelin', 'retatrutide'];
+            
+            types.forEach(type => {
+                const injs = data.injections.filter(i => i.peptide === type);
+                if (injs.length > 0) {
+                    const last = injs[injs.length - 1];
+                    const nextDate = new Date(last.date);
+                    [cite_start]nextDate.setDate(nextDate.getDate() + cycles[type]); [cite: 29]
+                    const diff = Math.ceil((nextDate - new Date()) / 86400000);
+                    
+                    const div = document.createElement('div');
+                    div.className = `min-w-[120px] p-4 rounded-2xl shadow-sm border-b-4 ${diff <= 0 ? 'bg-red-500 border-red-700 text-white' : 'bg-white border-blue-500'}`;
+                    div.innerHTML = `<p class="text-[10px] font-bold opacity-70">${type.toUpperCase()}</p><h2 class="text-lg font-black">${diff <= 0 ? 'D-DAY' : 'D-'+diff}</h2>`;
+                    alarmSection.appendChild(div);
+                }
+            });
+        }
+
+        function addVial() {
+            const type = document.getElementById('inj-type').value;
+            const size = type === 'mounjaro' ? 60 : type === 'tesamorelin' ? [cite_start]10 : 30; [cite: 3]
+            [cite_start]data.inventory.push({ id: Date.now(), peptide: type, remaining: size, total: size }); [cite: 13]
+            updateUI();
+            alert('주사기가 등록되었습니다.');
+        }
+
+        function renderVialSelect() {
+            const select = document.getElementById('inj-vial');
+            const type = document.getElementById('inj-type').value;
+            const available = data.inventory.filter(v => v.peptide === type && v.remaining > 0);
+            
+            select.innerHTML = available.length ? '' : '<option value="">재고 없음</option>';
+            available.forEach(v => {
+                select.innerHTML += `<option value="${v.id}">${v.remaining.toFixed(1)}mg 남음</option>`;
+            });
+        }
+
+        function saveInjection() {
+            const date = document.getElementById('inj-date').value;
+            const type = document.getElementById('inj-type').value;
+            const vialId = document.getElementById('inj-vial').value;
+            [cite_start]const dose = parseFloat(document.getElementById('inj-dose').value); [cite: 17]
+
+            if(!date || !vialId || !dose) return alert('모든 정보를 입력하세요.');
+
+            const vial = data.inventory.find(v => v.id == vialId);
+            [cite_start]if(vial.remaining < dose) return alert('재고 용량이 부족합니다.'); [cite: 16]
+
+            [cite_start]vial.remaining -= dose; [cite: 18]
+            [cite_start]data.injections.push({ date, peptide: type, dose, id: Date.now() }); [cite: 17]
+            updateUI();
+            alert('기록되었습니다!');
+        }
+
+        function saveWeight() {
+            [cite_start]const weight = parseFloat(document.getElementById('weight-input').value); [cite: 23]
+            const date = new Date().toISOString().split('T')[0];
+            if(weight) {
+                [cite_start]data.weights.push({ date, weight, id: Date.now() }); [cite: 23]
+                updateUI();
+                document.getElementById('weight-input').value = '';
+                alert('체중이 저장되었습니다.');
+            }
+        }
+
+        function renderVialList() {
+            const list = document.getElementById('vial-list');
+            list.innerHTML = '';
+            data.inventory.forEach(v => {
+                [cite_start]const pct = (v.remaining / v.total) * 100; [cite: 53]
+                list.innerHTML += `
+                    <div class="bg-white p-4 rounded-2xl shadow-sm">
+                        <div class="flex justify-between font-bold text-sm mb-2">
+                            <span>${v.peptide.toUpperCase()}</span>
+                            <span>${v.remaining.toFixed(1)}/${v.total}mg</span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                            <div class="bg-blue-500 h-full" style="width:${pct}%"></div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        function renderWeightInfo() {
+            const lossEl = document.getElementById('total-loss');
+            const list = document.getElementById('weight-list');
+            if(data.weights.length > 1) {
+                [cite_start]const loss = data.weights[0].weight - data.weights[data.weights.length-1].weight; [cite: 121]
+                lossEl.innerText = loss.toFixed(1) + 'kg';
+            }
+            list.innerHTML = data.weights.slice().reverse().map(w => `
+                <div class="flex justify-between p-2 border-b text-sm">
+                    <span>${w.date}</span><span class="font-bold">${w.weight}kg</span>
+                </div>`).join('');
+        }
+
+        // 초기 실행
+        document.getElementById('inj-date').value = new Date().toISOString().split('T')[0];
+        document.getElementById('inj-type').addEventListener('change', renderVialSelect);
+        updateUI();
     </script>
 </body>
 </html>
