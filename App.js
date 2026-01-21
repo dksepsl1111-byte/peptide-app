@@ -1,4 +1,3 @@
-// 최상단의 import 문들을 모두 지우고 이 코드로 시작하세요.
 const { useState, useEffect } = React;
 const { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } = Recharts;
 const { Calendar, TrendingDown, Syringe, BarChart3, Package, Plus, Trash2, Settings } = lucide-react;
